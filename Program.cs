@@ -11,24 +11,23 @@ namespace InisBot
     {
 
         private const string DISCORD_BOT_CONFIG_KEY = "DiscordBotToken";
+        private const string PERSISTANCE_PATH_CONFIG_KEY = "PersistencePath";
 
         static async Task Main()
         {
-            string discordToken = GetDiscordToken();
-            var client = await GetClient(discordToken);
-            new MessageHandler(client, new MahCounter(0));
-            await client.StartAsync();
+            var config = GetConfig();
+
+            string discordToken = GetDiscordToken(config);
+
+            var countPersister = new CounterPersister(config.GetValue(PERSISTANCE_PATH_CONFIG_KEY, "count.json"));
+            var mahCounter = await countPersister.GetCounterAsync();
+            new DiscordHandler(discordToken, mahCounter);
 
             await Task.Delay(Timeout.Infinite);
         }
 
-        private static string GetDiscordToken()
+        private static string GetDiscordToken(IConfigurationRoot config)
         {
-            var configBuilder = new ConfigurationBuilder()
-                            .AddJsonFile("config.json", optional: true)
-                            .AddUserSecrets<Program>(optional: true);
-            var config = configBuilder.Build();
-
             var discordToken = config.GetValue<string>(DISCORD_BOT_CONFIG_KEY);
             if (string.IsNullOrWhiteSpace(discordToken))
             {
@@ -38,21 +37,14 @@ namespace InisBot
             return discordToken;
         }
 
-        private static async Task<DiscordSocketClient> GetClient(string discordBotToken)
+        private static IConfigurationRoot GetConfig()
         {
-            var client = new DiscordSocketClient(new DiscordSocketConfig
-            {
-                LogLevel = LogSeverity.Verbose
-            });
-            client.Log += LogAsync;
-            await client.LoginAsync(TokenType.Bot, discordBotToken);
-            return client;
+            var configBuilder = new ConfigurationBuilder()
+                            .AddJsonFile("config.json", optional: true)
+                            .AddUserSecrets<Program>(optional: true);
+            var config = configBuilder.Build();
+            return config;
         }
 
-        private static Task LogAsync(LogMessage msg)
-        {
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
-        }
     }
 }
