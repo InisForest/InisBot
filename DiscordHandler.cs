@@ -27,6 +27,7 @@ namespace InisBot
             this._pipeline = new Pipeline<MessageContext>();
             this._pipeline.Add(new ToggleMahConfirmHandler().HandleAsync);
             this._pipeline.Add(new AddMahsHandler().HandleAsync);
+            this._pipeline.Add(new SetMahsHandler().HandleAsync);
             this._pipeline.Add(new GetMahsHandler().HandleAsync);
             this._pipeline.Add(new HelpHandler().HandleAsync);
             this._pipeline.Add(new MahHandler().HandleAsync);
