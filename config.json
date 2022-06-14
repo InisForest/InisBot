@@ -1,3 +1,10 @@
 {
-  "DiscordBotToken": ""
+  "DiscordBotToken": "",
+  "Persistence": {
+    "ConnectionString": ""
+  },
+  "MediaStorage": {
+    "ConnectionString": "",
+    "ContainerName": "commodity-images"
+  }
 }

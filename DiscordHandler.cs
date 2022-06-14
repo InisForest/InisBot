@@ -1,51 +1,66 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using InisBot.MessageHandlers;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Cocobot.Persistance;
+using Cocobot.Model;
 
-namespace InisBot
+namespace Cocobot
 {
-    internal class DiscordHandler
+    internal interface IDiscordHandler
+    {
+        Task ListenAsync();
+        DiscordSocketClient Client { get; }
+    }
+
+    internal class DiscordHandler : IDiscordHandler
     {
 
-        private readonly DiscordSocketClient _client;
-        private readonly MahCounter _counter;
-        private readonly Options _options;
-        private readonly Pipeline<MessageContext> _pipeline;
+        public DiscordSocketClient Client { get; }
 
+        private const string DISCORD_BOT_CONFIG_KEY = "DiscordBotToken";
+        private readonly ICommandBroker _commandBroker;
+        private readonly IComponentBroker _componentBroker;
+        private readonly IObjectRepository _objectRepo;
 
-        public DiscordHandler(string discordToken, MahCounter counter)
+        public DiscordHandler(IConfiguration config, ICommandBroker commandProvider, IComponentBroker componentBroker, IObjectRepository objectRepo)
         {
-            this._counter = counter;
-            this._options = new Options();
+            this._commandBroker = commandProvider;
+            this._componentBroker = componentBroker;
+            this._objectRepo = objectRepo;
+            var discordKey = config.GetValue<string>(DISCORD_BOT_CONFIG_KEY);
+            if (discordKey == null)
+                throw new Exception("Discord Bot Token not set!");
 
-            this._client = this.GetClient(discordToken);
-            this._client.MessageReceived += MessageReceivedAsync;
-            this._client.StartAsync();
-
-            this._pipeline = new Pipeline<MessageContext>();
-            this._pipeline.Add(new ToggleMahConfirmHandler().HandleAsync);
-            this._pipeline.Add(new AddMahsHandler().HandleAsync);
-            this._pipeline.Add(new SetMahsHandler().HandleAsync);
-            this._pipeline.Add(new GetMahsHandler().HandleAsync);
-            this._pipeline.Add(new HelpHandler().HandleAsync);
-            this._pipeline.Add(new MahHandler().HandleAsync);
+            this.Client = this.GetClient(discordKey);
+            this.Client.GuildAvailable += GuildAvailableAsync;
+            this.Client.SlashCommandExecuted += SlashCommandExecutedAsync;
+            this.Client.SelectMenuExecuted += MessageComponentExecutedAsync;
+            this.Client.ButtonExecuted += MessageComponentExecutedAsync;
         }
 
-        private Task MessageReceivedAsync(SocketMessage message)
-        {
-            if (message.Author.Id == this._client.CurrentUser.Id)
-                return Task.CompletedTask;
+        public Task ListenAsync() => 
+            this.Client.StartAsync();
 
-            var context = new MessageContext(this._counter, message, this._options);
-            return this._pipeline.Run(context);
+        private Task GuildAvailableAsync(SocketGuild guild)
+        {
+            var existingGuildState = this._objectRepo.GetById<GuildState>(guild.Id);
+            if (existingGuildState == null)
+                this._objectRepo.Upsert(new GuildState(guild.Id));
+            return this._commandBroker.RegisterAllAsync(guild);
         }
 
+        private Task SlashCommandExecutedAsync(SocketSlashCommand slashCommand) =>
+            this._commandBroker.HandleAsync(slashCommand);
+
+
+        private Task MessageComponentExecutedAsync(SocketMessageComponent component) =>
+            this._componentBroker.HandleAsync(component);
 
         private DiscordSocketClient GetClient(string discordBotToken)
         {
-            var client = new DiscordSocketClient(new DiscordSocketConfig
+            var client = new DiscordSocketClient(new ()
             {
                 LogLevel = LogSeverity.Verbose
             });

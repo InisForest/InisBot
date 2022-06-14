@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31019.35
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InisBot", "InisBot.csproj", "{3669336B-C95E-4EE1-9128-A41261519002}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Coco bot", "Cocobot.csproj", "{3669336B-C95E-4EE1-9128-A41261519002}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
